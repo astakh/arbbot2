@@ -1,0 +1,20 @@
+{
+  "name": "botarb",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "ccxt": "^1.86.76",
+    "dotenv": "^16.0.1",
+    "mongodb": "^4.7.0",
+    "mongoose": "^6.3.6",
+    "ws": "^8.8.0"
+  }
+}

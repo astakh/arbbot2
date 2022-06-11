@@ -1,0 +1,7 @@
+package-lock.json
+packageLocal.json 
+node_modules/ 
+oldies/
+.vscode/
+.env
+test.js
