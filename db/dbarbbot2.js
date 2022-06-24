@@ -1,211 +1,156 @@
-const mongodb   = require('mongodb');
-const mongoose  = require('mongoose'); 
-const func      = require('../functions');
+const { exchanges } = require('ccxt');
+const mongodb       = require('mongodb');
+const mongoose      = require('mongoose'); 
+const func          = require('../functions');
 require('dotenv').config();
+const {Mask}        = require('../models/Bots')
+const {Bot}         = require('../models/Bots')
+const {Deal}          = require('../models/Deals');
+const { Log }       = require('./Logs');
 
-const db        = process.env.DB_ARB2_PATH; 
+const db            = process.env.DB_ARB2_PATH; 
 mongoose
 .connect(db)
 .then((res) => console.log('Connected to DB'))
 .catch((err) => console.log(err));
 
-const Schema = mongoose.Schema; 
-
-const maskSchema = new Schema ({
-    enabled:            { type: Boolean,},
-    stage:              { type: Number, },
-    profit:             { type: Object, },
-    exch1:              { type: Object, },
-    exch2:              { type: Object, },
-    name:               { type: String, },
-    procType:           { type: String, },
-    move:               { type: Object, },
-    cion:               { type: Object, },
-    base:               { type: Object, },
-    disbal:             { type: Object, },
-    amountC:            { type: Number, },
-    amountB:            { type: Number, },
-    orderSel:           { type: Object, }, // tow orders: sell from left and buy to right
-    orderBuy:           { type: Object, },
-    
-    maskId:             { type: String, },
-    procId:             { type: String, },
-    dealId:             { type: String, }, 
-}, {timestamps: true});
-const Mask = mongoose.model('Mask', maskSchema); 
-const Proc = mongoose.model('Proc', maskSchema); 
-
-const dealSchema = new Schema ({
-    procId:             { type: String, },
-    maskId:             { type: String, },
-    profit:             { type: Object, },
-    orderSel:           { type: Object, }, 
-    orderBuy:           { type: Object, },
-}, {timestamps: true});
-const Deal = mongoose.model('Deal', dealSchema); 
-
-const logSchema = new Schema ({
-text:   { type: String, } }, {timestamps: true});
-const Log = mongoose.model('Log', logSchema); 
-
-const scopeSchema = new Schema ({
-    buy:    { type: Number, }, 
-    sell:   { type: Number, } 
-}, {timestamps: true});
-const Scope = mongoose.model('Scope', scopeSchema); 
-
-async function addLog(t) {
-    let log = new Log({text: t});
-    await func.sendAlert(t);
-    console.log(t)
-    await log.save();
-}
-async function addScope(s, b) {
-    let log = new Scope({buy: b, sell: s}); 
-    await log.save();
-}
-async function addDeal(bot) {
-    let proc = Proc.findById(bot.procId);
-    let deal = new Deal({
-        procId: bot.procId, maskId: bot.maskId,
-        profit: proc.profit
-    });
-    proc.dealId = deal._id; 
-     
-    await deal.save();
-    await proc.save();
-
-    return deal_id;
-}
-async function getProc(procId){
+async function getBots() {
     try {
-        let proc = await Proc.findById(procId);
-        if (proc) { return true; }
-    }
-    catch(err) { console.log(err); return false; }
+        const bots = Bot.find({active: true})
+        return bots
+    } catch(err) { console.log(err); return false; }
 }
-
 
 async function addMask() {
-    const move = {
-        sel: {
-            left:   {coin: 0, base: 0, price: 0, direction: 'sell'},
-            buy:    {coin: 0, base: 0, price: 0, direction: 'buy'}
+    let params      = {}
+    params.active   = false
+    params.name     = 'Anton2'
+    params.stage    = 0
+    params.amount   = 20
+    params.waiting  = 'sell'
+    params.range    = {sell: 0.2, buy: 0.1}
+    params.orderMask= {
+        sell: {
+            left:   {direction: 'sell', pair: 'WAVES/USDT'},
+            right:  {direction: 'buy',  pair: 'WAVES/USDN'}
         },
         buy: {
-            left:   {coin: 0, base: 0, price: 0, direction: 'buy'},
-            buy:    {coin: 0, base: 0, price: 0, direction: 'sell'}
-        }
-    }
-    const coin = {
-        name: 'WAVES',
-        ticker: {left: 'WAVES', right: 'WAVES', rate: 1, ccxt: 'WAVES'}, // rate = 
-        balance:{left: 0, right: 0},
-    }
-    const base1 = {
-        name: 'USDT',
-        ticker: {left: 'USDT', right: '34N9YcEETLWn93qYQ64EsP1x89tSruJU44RrEMSXXEPJ', rate: 1, ccxt: 'USDT'}, //  
-        balance:0,
-    }
-    const base2 = {
-        name: 'USDN',
-        ticker: {left: 'USDN', right: 'DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p', rate: 1, ccxt: 'USDN'}, //  
-        balance:0,
-    }
-    const exch1 = {
-        name:   'binance',
-        fee:    0.00075
-    }
-    const exch2 = {
-        name:   'wavesdex',
-        fee:    0.0005
-    }
-    const moves = []
-    const profit = {result: 0, moves: moves}
-    const disbal = {
-        deal: {sel: 0.4, buy:  0.4},
-        rebal:{to1: 0.7, to2: 0.7}  
-    }
-    const orderSel = {
-        left: {
-            id:         '',
-            amountC:    0,
-            price:      0,
-            average:    0,
-            placed:     false,
-            closed:     false,
-            filled:     0,
+            left:   {direction: 'buy',  pair: 'WAVES/USDT'},
+            right:  {direction: 'sell', pair: 'WAVES/USDN'}
         },
-        right: {
-            id:         '',
-            amountC:    0,
-            price:      0,
-            average:    0,
-            placed:     false,
-            closed:     false,
-            filled:     0,
+        rebal: {
+            right:  {direction: 'sell', pair: 'USDT/USDN'}
         }
     }
-    const orderBuy = {
+    params.orders   = {
+        sell:   {left: {orderId: '', placed: false, closed: false, average: 0}, right: {orderId: '', placed: false, closed: false, average: 0}},
+        buy:    {left: {orderId: '', placed: false, closed: false, average: 0}, right: {orderId: '', placed: false, closed: false, average: 0}}
+    }
+    params.exchanges= {left: 'binance', right: 'wavesexchange', ccxt: {left: '', right: ''}}
+    params.coins    = {
         left: {
-            id:         '',
-            amountC:    0,
-            price:      0,
-            average:    0,
-            placed:     false,
-            closed:     false,
-            filled:     0,
-        },
+            coin:   'WAVES',
+            base:   'USDT',
+            pair:   'WAVES/USDT'
+        }, 
         right: {
-            id:         '',
-            amountC:    0,
-            price:      0,
-            average:    0,
-            placed:     false,
-            closed:     false,
-            filled:     0,
-        }
+            coin:   'WAVES',
+            base:   'USDN',
+            pair:   'WAVES/USDN'
+        } 
     }
-    const amount    = { coin: 0, base: 200}
-    const params = {
-    enabled:            true,
-    stage:              0,
-    move:               move, 
-    profit:             profit,
-    exch1:              exch1,
-    exch2:              exch2,
-    name:               'version2',
-    procType:           'version2',
-    coin:               coin,
-    base1:              base1,
-    base2:              base2,
-    disbal:             disbal,
-    amount:             amount,
-    orderSel:           orderSel, 
-    orderBuy:           orderBuy,
-    
-    maskId:             '',
-    procId:             '',
-    dealId:             '', 
-    }
-    let mask    = new Mask(params);
-    let proc    = new Proc(mask);
-    proc.maskId = mask._id; 
-    mask.maskId = mask._id; 
-    proc.procId = proc._id; 
-    mask.procId = proc._id; 
+    params.dealId   = ''
+    params.profit   = 0
 
-    await proc.save(); 
+    let mask    = new Mask(params);
+    let bot     = new Bot(params);
+    bot.maskId  = mask._id; 
+    mask.maskId = mask._id; 
+    bot.botId  = bot._id; 
+    mask.botId = bot._id; 
+
+    await bot.save(); 
     await mask.save();
-    console.log(proc._id, 'process created');
+    console.log(bot._id, 'bot created');
     console.log(mask._id, 'mask created');
+
+    
+}
+async function addOrder(bot, orderId, side) {
+    try {
+        const b = await Bot.findById(bot.botId)
+        let newOrders = b.orders
+        newOrders[bot.waiting][side] = {orderId: orderId, placed: true, closed: false, average: 0}
+        await Bot.updateOne({_id: bot.botId}, {orders: newOrders})
+        await addLog(bot, `Order ${side} added`)
+        return newOrders
+    }
+    catch(err) { console.log(err); return false}
+}
+async function setStage(bot, stage) {
+    await Bot.updateOne({_id: bot.botId}, {stage: stage})
+    await addLog(bot, `go to stage ${stage}`)
+    return stage
+}
+
+async function updateOrder(bot, order, side) {
+    try {
+        const b = await Bot.findById(bot.botId)
+        let newOrders = b.orders
+        newOrders[bot.waiting][side] = {orderId: order.orderId, placed: true, closed: true, average: order.average}
+        //func.sendAlert(`profit = ${bot.profit.toFixed(2)} + ${order.average.toFixed(2)} * ${order.amount.toFixed(2)} * ${order.inOut}`)
+        bot.profit += order.average * order.amount * order.inOut
+        bot.profit -= order.average * order.amount * (0.0005 + 0.00075) / 2
+        await Bot.updateOne({_id: bot.botId}, {orders: newOrders, profit: bot.profit})
+        await addLog(bot, `Order ${side} updated`)
+        return newOrders
+    }
+    catch(err) { console.log(err); return false}
+} 
+async function addDeal(bot) {
+    const deal = new Deal({botId: bot.botId})
+    await deal.save()
+    await Bot.updateOne({_id: bot.botId}, {dealId: deal._id})
+    await addLog(bot, `${bot.name}: deal started`)
+    func.sendAlert(`${bot.name}: deal started`)
+    return deal._id
+}
+async function restartBot(bot) {
+    const params = {
+        profit: bot.profit,
+        orders: bot.orders,
+        maskId: bot.maskId
+    }
+    await Deal.updateOne({_id: bot.dealId}, params)
+    func.sendAlert('deal closed: profit ', bot.profit.toFixed(1))
+    const mask  = await Mask.findById(bot.maskId, {_id: 0}) 
+    mask.active = true
+    await Bot.updateOne({_id: bot.botId}, mask)
+    await addLog(bot, 'Restarted')
+    return mask
+
+}
+async function revertBot(bot) {
+
+    await Deal.updateOne({_id: bot.dealId}, {orders: bot.orders})
+    await Bot.updateOne({_id: bot.botId}, {waiting: 'buy'})
+    await addLog(bot, 'Reverted')
+    return 'buy'
 
 }
 
+async function addLog(bot, text) {
+    const log = new Log({botId: bot.botId, maskId: bot.maskId, dealId: bot.dealId, text: text})
+    await log.save()
+    console.log(text)
+}
 
-module.exports.addLog           = addLog;
-module.exports.addDeal          = addDeal;
-module.exports.addScope         = addScope;
-module.exports.getProc          = getProc;
-module.exports.addMask          = addMask;
-
+module.exports.addLog       = addLog;
+module.exports.addDeal      = addDeal;
+module.exports.restartBot   = restartBot;
+module.exports.revertBot    = revertBot;
+module.exports.setStage     = setStage;
+module.exports.addMask      = addMask;
+module.exports.getBots      = getBots
+module.exports.addOrder     = addOrder
+module.exports.updateOrder  = updateOrder

@@ -17,6 +17,8 @@ const ccxtObject = {
     binance:        new ccxt.binance(         { apiKey: process.env.BINANCE_API_KEY,  secret: process.env.BINANCE_API_SECRET }),
     wavesexchange:  new ccxt.wavesexchange(   { apiKey: process.env.WAVESDEX_API_KEY, secret: process.env.WAVESDEX_API_SECRET })
 }
+
+
 async function getBalances() {
     const t = Date.now()
     if (balance.nextTime < Date.now() ) {
@@ -53,7 +55,7 @@ async function placeOrder(exch, pair, orderType, orderDirection, amount, price) 
         try {
             const order = await exch.createOrder(pair, orderType, orderDirection, amount, price) 
             res.success = true 
-            res.orderId = order.id
+            res.orderId = order.orderId
         }
         catch(err) { res.success=false;  res.error=err; }
     }
@@ -62,15 +64,13 @@ async function placeOrder(exch, pair, orderType, orderDirection, amount, price) 
 async function getOrder(exch, id, pair) {
     let res = {};
     try {
-        const order = await exch.fetchOrder(id, pair)
+        const order = await exch.fetchOrder(id, pair);
         res.success = true;
         res.order   = order;
-        res.orderId = order.id;
+        res.orderId = order.orderId;
         res.price   = order.price;
-        res.amount  = order.amount
         res.average = order.average;
         res.status  = order.status;
-        if (order.side == 'sell') {res.inOut = 1} else {res.inOut = -1 }
     }
     catch(err) { res.success=false;  res.error=err; }
     return res;
@@ -86,9 +86,9 @@ async function getMarkets() {
             rateTime = Date.now() + 1000;
         }
     }
-    rates = await func.getMarketDirect('wavesdex', 'WAVES', 'DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p', 100);
+    rates = await func.getMarketDirect('wavesdex', 'WAVES', 'DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p', 200);
     if (rates.success) { 
-        market.right.coin.sell = rates.result.sell ;
+        market.right.coin.sell = rates.result.sell;
         market.right.coin.buy = rates.result.buy;
         market.right.coin.avg = rates.result.avg; 
     }
@@ -122,93 +122,94 @@ let market      = { left: {coin: {sell: 0, buy: 0, avg: 0}, base: {sell: 1, buy:
 async function handleBots(bot) { 
     console.log(`${bot.name}: waiting ${bot.waiting} stage ${bot.stage}`)
     let tradeAmount = 0
+    scope[bot.waiting] = 1
     if (bot.stage == 0) {
         if (scope[bot.waiting] > bot.range[bot.waiting]) {
-            //console.log(bot.amount, balance.left.coin, balance.right.base2, market.right.coin.buy )
+            console.log(bot.amount, balance.left.coin, balance.right.base2, market.right.coin.buy )
             if (bot.waiting == 'sell') tradeAmount = parseInt(Math.min( bot.amount, balance.left.coin, balance.right.base2 / market.right.coin.buy / 1.03 ))-1
             else tradeAmount = parseInt(Math.min( bot.amount, balance.right.coin, balance.left.base1 / market.left.coin.buy / 1.03 ))-1
-            if (tradeAmount > 10) {
+            if (tradeAmount > 1) {
                 bot.stage = 1
                 console.log(`${bot.name}: Starting ${bot.waiting}-trade: amount ${tradeAmount}`)
-            } else { console.log(`${bot.name}: Trade amount ${tradeAmount} too small`)}
+            }
         } 
     }
+    
     if (bot.stage == 1) {
         if (tradeAmount > 0) {
-            console.log(`${bot.name}: placing orders`)
             let reverse = ''
-            bot.orderLeft  = placeOrder(bot.exchanges.ccxt.left,  bot.orderMask[bot.waiting].left.pair,  'limit', bot.orderMask[bot.waiting].left.direction,  tradeAmount, market.left.coin[bot.waiting])
+            //bot.orderLeft  = placeOrder(bot.exchanges.ccxt.left,  bot.orderMask[bot.waiting].left.pair,  'limit', bot.orderMask[bot.waiting].left.direction,  tradeAmount, market.left.coin[bot.waiting])
+            console.log(bot.orderMask[bot.waiting].left.pair,  'limit', bot.orderMask[bot.waiting].left.direction,  tradeAmount, market.left.coin[bot.waiting])
             if (bot.waiting == 'sell') {reverse = 'buy'} else { reverse = 'sell'}
-            bot.orderRight = placeOrder(bot.exchanges.ccxt.right, bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[reverse])
+            //bot.orderRight = placeOrder(bot.exchanges.ccxt.right, bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[reverse])
+            console.log(bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[reverse])
 
-            //console.log('left:  ', bot.orderMask[bot.waiting].left.pair, 'limit', bot.orderMask[bot.waiting].left.direction, tradeAmount, market.left.coin[bot.waiting])
-            //console.log('right: ', bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[bot.waiting])
-
-            bot.stage   = await db.setStage(bot, 2)
-            if (bot.waiting == 'sell') bot.dealId  = await db.addDeal(bot)
-            
+            bot.stage   = await db.setStage (bot.botId, 2)
+            bot.dealId  = await db.addDeal  (bot.botId)
+            await db.addLog(bot, `${bot.name}: deal started`)
 
         } else { bot.stage = 0 }
 
     }
     if (bot.stage == 2) { // waiting for place orders
-        const orderLeft = await bot.orderLeft
-        const orderRight= await bot.orderRight
+        //const orderLeft = await bot.orderLeft
+        //const orderRight= await bot.orderRight
+        let orderLeft = {success: true, orderId: 'leftorder'}
+        let orderRight = {success: true, orderId: 'rightorder'}
         if (orderLeft.success) {
             bot.orders  = await db.addOrder(bot, orderLeft.orderId,  'left')
-            console.log(`${bot.name}: left placed id: ${orderLeft.orderId}`)
         } else { console.log(orderLeft.error)}
         
         if (orderRight.success) {
             bot.orders  = await db.addOrder(bot, orderRight.orderId,  'right')
-            console.log(`${bot.name}: right placed id: ${orderRight.orderId}`)
         } else { console.log(orderRight.error)}
         
         if (orderLeft.success && orderRight.success) {
             bot.stage   = await db.setStage(bot, 3)                     
         }
     }
+    
     if (bot.stage == 3) {   // waiting for orders closed
         if (!bot.orders[bot.waiting].left.closed){
-            const orderLeft = await getOrder(bot.exchanges.ccxt.left, bot.orders[bot.waiting].left.orderId, bot.orderMask[bot.waiting].left.pair)
-            //console.log('left order: ', orderLeft)
+            //const orderLeft = await getOrder(bot.exchange.ccxt.left, bot.orders[bot.waiting].left.orderId, bot.orderMask[bot.waiting].left.pair)
+            console.log('getOrder: ', bot.orders[bot.waiting].left.orderId, bot.orderMask[bot.waiting].left.pair)
+            let orderLeft = {success: true, status: 'closed', average: 12, orderId: 'leftorder'}
             if (orderLeft.success) {
                 if (orderLeft.status == 'closed') {     // save
                     bot.orders = await db.updateOrder(bot, orderLeft, 'left')
                 }
             }
         }
-        if (!bot.orders[bot.waiting].right.closed){ 
-            const orderRight = await getOrder(bot.exchanges.ccxt.right, bot.orders[bot.waiting].right.orderId, bot.orderMask[bot.waiting].right.pair)
-            //console.log('right order: ', orderRight)
+        if (!bot.orders[bot.waiting].right.closed){
+            //const orderRight = await getOrder(bot.exchange.ccxt.right, bot.orders[bot.waiting].right.orderId, bot.orderMask[bot.waiting].right.pair)
+            let orderRight = {success: true, status: 'closed', average: 10, orderId: 'rightorder'}
             if (orderRight.success) {
                 if (orderRight.status == 'closed') {     // save
                     bot.orders = await db.updateOrder(bot, orderRight, 'right')
                 }
             }
         }
+
         if (bot.orders[bot.waiting].right.closed && bot.orders[bot.waiting].left.closed) { // restart or revert
-            console.log('restart or revert')
             if (bot.waiting == 'buy') {
-                console.log('restart')
                 bot = await db.restartBot(bot)
                 await db.addLog(bot, `${bot.name}: restarted`)
-
-                bot.exchanges.ccxt.left  = ccxtObject[bot.exchanges.left]
-                bot.exchanges.ccxt.right = ccxtObject[bot.exchanges.right]
+                bot.restarted = true
+                bot.exchange.ccxt.left  = ccxtObject[bot.exchange.left]
+                bot.exchange.ccxt.right = ccxtObject[bot.exchange.right]
             }
             else {
-                console.log('revert')
-                bot.waiting = await db.revertBot(bot)
-                bot.stage   = await db.setStage(bot, 0)
+                bot.waiting = 'buy'
+                bot.stage   = await db.setStage(bot.botId, 0)
                 await db.addLog(bot, `${bot.name}: reverted`)
             }
         }
 
     }
 
-
+    
     return bot
+    
 }
 async function botLoop() { 
     let bots = await db.getBots() 
@@ -218,8 +219,8 @@ async function botLoop() {
     }
     console.log(`Having ${bots.length} bots..`)
     if (bots) {
-
-        while(true) {
+        let gogo = true
+        while(gogo) {
             // get situation
             await getMarkets()
             const scopeOk = await getScopes()
@@ -232,6 +233,7 @@ async function botLoop() {
 
                 for (var i=0; i<bots.length; i++) {
                     bots[i] = await handleBots(bots[i])
+                    if (bots[i].restarted) gogo = false
                 }
             }
         }
