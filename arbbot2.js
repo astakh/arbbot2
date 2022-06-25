@@ -31,7 +31,7 @@ async function getBalances() {
             if (bal[1].USDN.free)    { balance.right.base2  = bal[1].USDN.free; }  
             balance.ok = true
         }, err => {console.log(err); balance     = {ok: false, left: {coin: 0, base1: 0}, right: {coin: 0, base1: 0, base2: 0}, nextTime: 0} })
-        console.log(`Balances: left: ${balance.left.coin} ${balance.left.base1} || right: ${balance.right.coin} ${balance.right.base2} time: ${Date.now() - t}`)
+        console.log(`Balances: left: ${balance.left.coin.toFixed(0)}W ${balance.left.base1.toFixed(0)}D || right: ${balance.right.coin.toFixed(0)}W ${balance.right.base2.toFixed(0)}D time: ${Date.now() - t}`)
         balance.nextTime = Date.now() + 60*1000;
     }
     //return true    
@@ -138,6 +138,15 @@ async function handleBots(bot) {
             if (bot.waiting == 'sell') {reverse = 'buy'} else { reverse = 'sell'}
             bot.orderRight = placeOrder(bot.exchanges.ccxt.right, bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[reverse] * rightMultiplier)
 
+            // balance correction
+            if (bot.waiting == 'sell') {
+                balance.left.coin   -= tradeAmount
+                balance.right.base2 -= tradeAmount * market.right.coin.buy
+            }
+            else {
+                balance.left.base1  -= tradeAmount * market.left.coin.buy
+                balance.right.coin  -= tradeAmount                
+            }
             //console.log('left:  ', bot.orderMask[bot.waiting].left.pair, 'limit', bot.orderMask[bot.waiting].left.direction, tradeAmount, market.left.coin[bot.waiting])
             //console.log('right: ', bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[bot.waiting])
 
