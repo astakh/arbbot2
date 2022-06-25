@@ -124,13 +124,16 @@ async function handleBots(bot) {
     let tradeAmount = 0
     if (bot.stage == 0) {
         if (scope[bot.waiting] > bot.range[bot.waiting]) {
-            //console.log(bot.amount, balance.left.coin, balance.right.base2, market.right.coin.buy )
-            if (bot.waiting == 'sell') tradeAmount = parseInt(Math.min( bot.amount, balance.left.coin, balance.right.base2 / market.right.coin.buy / 1.03 ))-1
-            else tradeAmount = parseInt(Math.min( bot.amount, balance.right.coin, balance.left.base1 / market.left.coin.buy / 1.03 ))-1
-            if (tradeAmount > 10) {
-                bot.stage = 1
-                console.log(`${bot.name}: Starting ${bot.waiting}-trade: amount ${tradeAmount}`)
-            } else { console.log(`${bot.name}: Trade amount ${tradeAmount} too small`)}
+            await getScopes()
+            if (scope[bot.waiting] > bot.range[bot.waiting]) {
+                //console.log(bot.amount, balance.left.coin, balance.right.base2, market.right.coin.buy )
+                if (bot.waiting == 'sell') tradeAmount = parseInt(Math.min( bot.amount, balance.left.coin, balance.right.base2 / market.right.coin.buy / 1.03 ))-1
+                else tradeAmount = parseInt(Math.min( bot.amount, balance.right.coin, balance.left.base1 / market.left.coin.buy / 1.03 ))-1
+                if (tradeAmount > 10) {
+                    bot.stage = 1
+                    console.log(`${bot.name}: Starting ${bot.waiting}-trade: amount ${tradeAmount}`)
+                } else { console.log(`${bot.name}: Trade amount ${tradeAmount} too small`)}
+            }
         } 
     }
     if (bot.stage == 1) {
