@@ -24,11 +24,11 @@ async function getBots() {
 async function addMask() {
     let params      = {}
     params.active   = false
-    params.name     = 'Anton2_4'
+    params.name     = 'Anton2_25_25'
     params.stage    = 0
-    params.amount   = 20
+    params.amount   = 30
     params.waiting  = 'sell'
-    params.range    = {sell: 0.4, buy: 0.3}
+    params.range    = {sell: 0.25, buy: 0.25}
     params.orderMask= {
         sell: {
             left:   {direction: 'sell', pair: 'WAVES/USDT'},
@@ -122,7 +122,7 @@ async function restartBot(bot) {
         maskId: bot.maskId
     }
     await Deal.updateOne({_id: bot.dealId}, params)
-    func.sendAlert('deal closed: profit ', bot.profit.toFixed(1))
+    func.sendAlert(`deal closed: profit ${bot.profit.toFixed(1)}`)
     const mask  = await Mask.findById(bot.maskId, {_id: 0}) 
     mask.active = true
     await Bot.updateOne({_id: bot.botId}, mask)
