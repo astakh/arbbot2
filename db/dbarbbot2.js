@@ -122,7 +122,7 @@ async function restartBot(bot) {
         maskId: bot.maskId
     }
     await Deal.updateOne({_id: bot.dealId}, params)
-    func.sendAlert(`deal closed: profit ${bot.profit.toFixed(1)}`)
+    func.sendAlert(`${bot.name} restarted: profit ${bot.profit.toFixed(1)}`)
     const mask  = await Mask.findById(bot.maskId, {_id: 0}) 
     mask.active = true
     await Bot.updateOne({_id: bot.botId}, mask)
@@ -135,6 +135,7 @@ async function revertBot(bot) {
     await Deal.updateOne({_id: bot.dealId}, {orders: bot.orders})
     await Bot.updateOne({_id: bot.botId}, {waiting: 'buy'})
     await addLog(bot, 'Reverted')
+    func.sendAlert(`${bot.name} reverted: profit ${bot.profit.toFixed(1)}`)
     return 'buy'
 
 }

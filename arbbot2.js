@@ -106,18 +106,11 @@ async function getScopes() {
         return false
     }
 }
-function setDelay(bot, scope, direction) {
-    let delay = 0;
-    if (direction == 'sell') if (scope.sell < 0) { delay = 2000; } else if (scope.sell < bot.disbalLeft/2) {delay = 1000; } 
-    if (direction == 'buy')  if (scope.buy < 0)  { delay = 2000; } else if (scope.buy < bot.disbalRigh/2)  {delay = 1000; }
-    return delay;
-}
+
 let balance     = {left: {coin: 0, base1: 0}, right: {coin: 0, base1: 0, base2: 0}, nextTime: 0};
 let scope       = {};
 let rateTime    = 0;  
 let market      = { left: {coin: {sell: 0, buy: 0, avg: 0}, base: {sell: 1, buy: 1, avg: 1}}, right:{coin: {sell: 0, buy: 0, avg: 0}, base: {sell: 0, buy: 0, avg: 0}} }
-//exchanges['wavesdex']   = wavesdex;
-//exchanges['binance']    = binance;
 
 async function handleBots(bot) { 
     console.log(`${bot.name}: waiting ${bot.waiting} stage ${bot.stage}`)
@@ -127,8 +120,8 @@ async function handleBots(bot) {
             await getScopes()
             if (scope[bot.waiting] > bot.range[bot.waiting]) {
                 //console.log(bot.amount, balance.left.coin, balance.right.base2, market.right.coin.buy )
-                if (bot.waiting == 'sell') tradeAmount = parseInt(Math.min( bot.amount, balance.left.coin, balance.right.base2 / market.right.coin.buy / 1.03 ))-1
-                else tradeAmount = parseInt(Math.min( bot.amount, balance.right.coin, balance.left.base1 / market.left.coin.buy / 1.03 ))-1
+                if (bot.waiting == 'sell') tradeAmount = parseInt(Math.min( bot.amount, balance.left.coin, balance.right.base2 / market.right.coin.buy / 1.03 ))
+                else tradeAmount = parseInt(Math.min( bot.amount, balance.right.coin, balance.left.base1 / market.left.coin.buy / 1.03 ))
                 if (tradeAmount > 10) {
                     bot.stage = 1
                     console.log(`${bot.name}: Starting ${bot.waiting}-trade: amount ${tradeAmount}`)
