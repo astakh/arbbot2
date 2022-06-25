@@ -138,9 +138,9 @@ async function handleBots(bot) {
             console.log(`${bot.name}: placing orders`)
             let reverse = ''; let leftMultiplier = 1 / 1.005; let rightMultiplier = 1.005;
             if (bot.waiting) { leftMultiplier = rightMultiplier; rightMultiplier = 1 / leftMultiplier; }
-            bot.orderLeft  = placeOrder(bot.exchanges.ccxt.left,  bot.orderMask[bot.waiting].left.pair,  'limit', bot.orderMask[bot.waiting].left.direction,  tradeAmount, market.left.coin[bot.waiting])
+            bot.orderLeft  = placeOrder(bot.exchanges.ccxt.left,  bot.orderMask[bot.waiting].left.pair,  'limit', bot.orderMask[bot.waiting].left.direction,  tradeAmount, market.left.coin[bot.waiting] * leftMultiplier)
             if (bot.waiting == 'sell') {reverse = 'buy'} else { reverse = 'sell'}
-            bot.orderRight = placeOrder(bot.exchanges.ccxt.right, bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[reverse])
+            bot.orderRight = placeOrder(bot.exchanges.ccxt.right, bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[reverse] * rightMultiplier)
 
             //console.log('left:  ', bot.orderMask[bot.waiting].left.pair, 'limit', bot.orderMask[bot.waiting].left.direction, tradeAmount, market.left.coin[bot.waiting])
             //console.log('right: ', bot.orderMask[bot.waiting].right.pair, 'limit', bot.orderMask[bot.waiting].right.direction, tradeAmount, market.right.coin[bot.waiting])
