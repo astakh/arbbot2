@@ -24,11 +24,11 @@ async function getBots() {
 async function addMask() {
     let params      = {}
     params.active   = false
-    params.name     = 'Anton2_25_25'
+    params.name     = 'Anton2_43_30'
     params.stage    = 0
     params.amount   = 30
     params.waiting  = 'sell'
-    params.range    = {sell: 0.25, buy: 0.25}
+    params.range    = {sell: 0.43, buy: 0.30}
     params.orderMask= {
         sell: {
             left:   {direction: 'sell', pair: 'WAVES/USDT'},
